@@ -65,23 +65,15 @@ KEY_DIRECTION = {
 }
 
 
-class Snake(object):
-    def __init__(self, start, start_length, head_image, tail_image):
+class Snake(Sprite):
+    # Snake implemented using "Double Ended Queue - deque"
+    def __init__(self, start, start_length):
         self.speed = SNAKE_SPEED_INITIAL  # Speed in squares per second.
         self.timer = 1.0 / self.speed    # Time remaining to next movement.
         self.growth_pending = 0          # Number of segments still to grow.
         self.direction = DIRECTION_UP    # Current movement direction.
         self.segments = deque([start - self.direction * i
                                for i in xrange(start_length)])
-    # SLA
-        self.head_image = head_image
-        self.tail_image = tail_image
-
-        self.head_image = pygame.image.load(head_image)
-        self.tail_image = pygame.image.load(tail_image)
-
-        pygame.transform.scale(self.head_image, (BLOCK_SIZE, BLOCK_SIZE))
-        pygame.transform.scale(self.tail_image, (BLOCK_SIZE, BLOCK_SIZE))
 
     def __iter__(self):
         return iter(self.segments)
@@ -135,6 +127,11 @@ class SnakeGame(object):
         self.block_size = BLOCK_SIZE
         self.window = pygame.display.set_mode(WORLD_SIZE * self.block_size)
         self.screen = pygame.display.get_surface()
+
+        self.head_image = pygame.image.load("./images/Bobble_Dale.png")
+        self.segment_image = pygame.image.load("./images/crushed_can2.png")
+        self.food_image = pygame.image.load("./images/Alamo_can.png")
+
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font('freesansbold.ttf', 20)
         self.world = Rect((0, 0), WORLD_SIZE)
@@ -145,16 +142,24 @@ class SnakeGame(object):
         self.playing = True
         self.next_direction = DIRECTION_UP
         self.score = 0
-        self.snake = Snake(self.world.center, SNAKE_START_LENGTH,
-                           head_image="./images/monster1.png", tail_image="./images/Yoda.png")
+        self.snake = Snake(self.world.center, SNAKE_START_LENGTH)
         self.food = set()
-        self.add_food()
+        self.spread_food(1)
+        #self.add_food()
 
     def add_food(self):
         """Ensure that there is at least one piece of food.
         (And, with small probability, more than one.)
         """
         while not (self.food and randrange(4)):
+            food = Vector(map(randrange, self.world.bottomright))
+            if food not in self.food and food not in self.snake:
+                self.food.add(food)
+
+    def spread_food(self, numfood):
+        # Our version of the game distributes a set number of food items for our characters to clear before they can level up
+
+        for i in range (0, numfood):
             food = Vector(map(randrange, self.world.bottomright))
             if food not in self.food and food not in self.snake:
                 self.food.add(food)
@@ -170,14 +175,28 @@ class SnakeGame(object):
         """Update the game by dt seconds."""
         self.snake.update(dt, self.next_direction)
 
-        # If snake hits a food block, then consume the food, add new
-        # food and grow the snake.
+        # # If snake hits a food block, then consume the food, add new
+        # # food and grow the snake.
+        # head = self.snake.head()
+        # if head in self.food:
+        #     self.food.remove(head)
+        #     self.add_food()
+        #     self.snake.grow()
+        #     self.score += len(self.snake) * SEGMENT_SCORE
+
+        # If our snake hits a food block, just consume it and grow...could be a good place to introduce random "bonus" object
+
         head = self.snake.head()
         if head in self.food:
             self.food.remove(head)
-            self.add_food()
             self.snake.grow()
             self.score += len(self.snake) * SEGMENT_SCORE
+
+        #if no more food then we cleared the screen!
+        if (bool(self.food) == False):  #  No more food!
+            print "You cleared the screen"
+            pygame.quit()
+
 
         # If snake collides with self or the screen boundaries, then
         # it's game over.
@@ -196,12 +215,22 @@ class SnakeGame(object):
         # SLA - modified to use loaded images instead of simple blocks
         """Draw game (while playing)."""
         self.screen.fill(BACKGROUND_COLOR)
-        for p in self.snake:
-            pygame.draw.rect(self.screen, SNAKE_COLOR, self.block(p))
-            self.screen.blit(self.snake.head_image, self.block(p))
+        # always draw the head then "fill the other segments"
+        # self.screen.blit(self.snake.head_image, self.block(0))
+
+        for i, p in enumerate(self.snake):
+            if i == 0:  # it's the head, use our image
+                self.screen.blit(self.head_image, self.block(p))
+            else:  # it's a segment, use our image
+                self.screen.blit(self.segment_image, self.block(p))
+                #pygame.draw.rect(self.screen, SNAKE_COLOR, self.block(p))
+
+        # Note:  at this point i and p are at the tail...
+
         for f in self.food:
-            pygame.draw.rect(self.screen, FOOD_COLOR, self.block(f))
-            self.screen.blit(self.snake.tail_image, self.block(p))
+        #    pygame.draw.rect(self.screen, FOOD_COLOR, self.block(f))
+            self.screen.blit(self.food_image, self.block(f))
+
         self.draw_text("Score: {}".format(self.score), (20, 20))
 
     def draw_death(self):
