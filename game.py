@@ -1,9 +1,15 @@
+# TODO: Need to change game reset on out of bounds so that levels are maintained, consider resetting the score though
+# TODO: Need to implement boss battle prior to level_up....pull in shooter project
+# TODO: Need to change character images on level_up
+# TODO: Need to set World and boundaries to specific point in the background
+# TODO: Clean up and restructure so this is not all 1 big file
+# TODO: Consider using classes....
 # Start with a basic snake game....thanks Gareth Rees!
 # In our version beer is equivalent to food
 #
 from collections import deque
 import pygame
-from pygame.sprite import Sprite
+#from pygame.sprite import Sprite
 from random import randrange
 import sys
 from pygame.locals import *
@@ -65,7 +71,7 @@ KEY_DIRECTION = {
 }
 
 
-class Snake(Sprite):
+class Snake(object):
     # Snake implemented using "Double Ended Queue - deque"
     def __init__(self, start, start_length):
         self.speed = SNAKE_SPEED_INITIAL  # Speed in squares per second.
@@ -123,6 +129,7 @@ class Snake(Sprite):
 
 class SnakeGame(object):
     def __init__(self):
+        print "initing SnakeGame"
         pygame.display.set_caption('PyGame Snake')
         self.block_size = BLOCK_SIZE
         self.window = pygame.display.set_mode(WORLD_SIZE * self.block_size)
@@ -132,6 +139,7 @@ class SnakeGame(object):
         self.segment_image = pygame.image.load("./images/crushed_can2.png")
         self.food_image = pygame.image.load("./images/Alamo_can.png")
 
+        self.level = 0
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font('freesansbold.ttf', 20)
         self.world = Rect((0, 0), WORLD_SIZE)
@@ -147,6 +155,14 @@ class SnakeGame(object):
         self.spread_food(1)
         #self.add_food()
 
+    def level_up(self):
+        """Start a new level."""
+        self.level += 1
+        self.next_direction = DIRECTION_UP
+        self.snake = Snake(self.world.center, SNAKE_START_LENGTH)
+        self.food = set()
+        self.spread_food(5)
+
     def add_food(self):
         """Ensure that there is at least one piece of food.
         (And, with small probability, more than one.)
@@ -158,7 +174,7 @@ class SnakeGame(object):
 
     def spread_food(self, numfood):
         # Our version of the game distributes a set number of food items for our characters to clear before they can level up
-
+        print "spreading %d beer cans" % numfood
         for i in range (0, numfood):
             food = Vector(map(randrange, self.world.bottomright))
             if food not in self.food and food not in self.snake:
@@ -192,12 +208,6 @@ class SnakeGame(object):
             self.snake.grow()
             self.score += len(self.snake) * SEGMENT_SCORE
 
-        #if no more food then we cleared the screen!
-        if (bool(self.food) == False):  #  No more food!
-            print "You cleared the screen"
-            pygame.quit()
-
-
         # If snake collides with self or the screen boundaries, then
         # it's game over.
         if self.snake.self_intersecting() or not self.world.collidepoint(self.snake.head()):
@@ -215,8 +225,6 @@ class SnakeGame(object):
         # SLA - modified to use loaded images instead of simple blocks
         """Draw game (while playing)."""
         self.screen.fill(BACKGROUND_COLOR)
-        # always draw the head then "fill the other segments"
-        # self.screen.blit(self.snake.head_image, self.block(0))
 
         for i, p in enumerate(self.snake):
             if i == 0:  # it's the head, use our image
@@ -239,23 +247,55 @@ class SnakeGame(object):
         self.draw_text("Game over! Press Space to start a new game", (20, 150))
         self.draw_text("Your score is: {}".format(self.score), (140, 180))
 
-    def play(self):
-        """Play game until the QUIT event is received."""
-        while True:
+    def play(self, level):
+        """Play game until food cleared or the QUIT event is received."""
+        player_success = False
+        print "playing level %r" % level
+
+        while bool(self.food):
             dt = self.clock.tick(FPS) / 1000.0  # convert to seconds
             for e in pygame.event.get():
                 if e.type == QUIT:
-                    return
-                elif e.type == KEYUP:
+                    return player_success
+                elif e.type == KEYDOWN:
                     self.input(e)
+
             if self.playing:
                 self.update(dt)
                 self.draw()
             else:
                 self.draw_death()
+
             pygame.display.flip()
+
+        if (bool(self.food) == False):  #  No more food!
+            print "You cleared the screen"
+            player_success = True
+
+        print "player_success %r" % player_success
+        return player_success
 
 
 pygame.init()
-SnakeGame().play()
+
+levels = [0, 1, 2, 3, 4]
+player_success = True
+i=0
+current_game = SnakeGame()
+
+while (i < len(levels)):
+    player_success = current_game.play(levels[i])
+    if player_success:
+        # transition sequence
+        # boss battle (shooter game)
+        # if player_beat_boss then level up...
+        i += 1
+        current_game.level_up()
+        # otherwise, make player repeat level
+    else:
+        continue
+
+if player_success:
+    print "CONGRATS! You beat all %d levels!" % len(levels)
+
 pygame.quit()
