@@ -4,6 +4,8 @@
 # TODO: Need to set World and boundaries to specific point in the background
 # TODO: Clean up and restructure so this is not all 1 big file
 # TODO: Consider using classes....
+
+
 # Start with a basic snake game....thanks Gareth Rees!
 # In our version beer is equivalent to food
 #
@@ -143,16 +145,19 @@ class SnakeGame(object):
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font('freesansbold.ttf', 20)
         self.world = Rect((0, 0), WORLD_SIZE)
-        self.reset()
+        self.reset(True)
 
-    def reset(self):
+    def reset(self,full_reset=True):
         """Start a new game."""
         self.playing = True
         self.next_direction = DIRECTION_UP
-        self.score = 0
         self.snake = Snake(self.world.center, SNAKE_START_LENGTH)
         self.food = set()
         self.spread_food(1)
+
+        if full_reset:
+            self.score = 0
+
         #self.add_food()
 
     def level_up(self):
@@ -185,7 +190,10 @@ class SnakeGame(object):
         if e.key in KEY_DIRECTION:
             self.next_direction = KEY_DIRECTION[e.key]
         elif e.key == K_SPACE and not self.playing:
-            self.reset()
+            self.reset(True)   # full reset
+        elif e.key == K_c:
+            self.reset(False)   # partial reset
+            self.play(self.level)
 
     def update(self, dt):
         """Update the game by dt seconds."""
@@ -244,11 +252,11 @@ class SnakeGame(object):
     def draw_death(self):
         """Draw game (after game over)."""
         self.screen.fill(DEATH_COLOR)
-        self.draw_text("Game over! Press Space to start a new game", (20, 150))
+        self.draw_text("Game over! Press Space to start a new game or letter 'C' to continue", (20, 150))
         self.draw_text("Your score is: {}".format(self.score), (140, 180))
 
     def play(self, level):
-        """Play game until food cleared or the QUIT event is received."""
+        pygame.display.flip()  # to account for re-entry after continue?
         player_success = False
         print "playing level %r" % level
 
@@ -256,6 +264,7 @@ class SnakeGame(object):
             dt = self.clock.tick(FPS) / 1000.0  # convert to seconds
             for e in pygame.event.get():
                 if e.type == QUIT:
+                    self.playing = False
                     return player_success
                 elif e.type == KEYDOWN:
                     self.input(e)
@@ -271,6 +280,7 @@ class SnakeGame(object):
         if (bool(self.food) == False):  #  No more food!
             print "You cleared the screen"
             player_success = True
+            self.level += 1
 
         print "player_success %r" % player_success
         return player_success
@@ -292,10 +302,10 @@ while (i < len(levels)):
         i += 1
         current_game.level_up()
         # otherwise, make player repeat level
-    else:
-        continue
+    elif current_game.playing == False:
+        break
 
-if player_success:
+if player_success and current_game.playing == True:
     print "CONGRATS! You beat all %d levels!" % len(levels)
 
 pygame.quit()
