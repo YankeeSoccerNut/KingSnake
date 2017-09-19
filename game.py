@@ -1,4 +1,3 @@
-# TODO: Need to change game reset on out of bounds so that levels are maintained, consider resetting the score though
 # TODO: Need to implement boss battle prior to level_up....pull in shooter project
 # TODO: Need to change character images on level_up
 # TODO: Need to set World and boundaries to specific point in the background
@@ -45,14 +44,14 @@ class Vector(tuple):
 FPS = 60                        # Game frames per second
 SEGMENT_SCORE = 50              # Score per segment
 
-SNAKE_SPEED_INITIAL = 4.0       # Initial snake speed (squares per second)
-SNAKE_SPEED_INCREMENT = 0.25    # Snake speeds up this much each time it grows
+SNAKE_SPEED_INITIAL = 10.0       # Initial snake speed (squares per second)
+SNAKE_SPEED_INCREMENT = 2.0    # Snake speeds up this much each time it grows
 SNAKE_START_LENGTH = 1          # Initial snake length in segments
 
-WORLD_SIZE = Vector((20, 20))   # World size, in blocks
-BLOCK_SIZE = 24                 # Block size, in pixels
+WORLD_SIZE = Vector((35, 35))   # World size, in blocks
+BLOCK_SIZE = 20                 # Block size, in pixels
 
-BACKGROUND_COLOR = 45, 45, 45
+background_color = 45, 45, 45
 SNAKE_COLOR = 0, 255, 0
 FOOD_COLOR = 255, 0, 0
 DEATH_COLOR = 255, 0, 0
@@ -134,18 +133,39 @@ class SnakeGame(object):
         print "initing SnakeGame"
         pygame.display.set_caption('PyGame Snake')
         self.block_size = BLOCK_SIZE
-        self.window = pygame.display.set_mode(WORLD_SIZE * self.block_size)
+        self.window = pygame.display.set_mode([1000, 700])
+        #self.window = pygame.display.set_mode([1200, 800])
+
+#        self.window = pygame.display.set_mode(WORLD_SIZE * self.block_size)
+
         self.screen = pygame.display.get_surface()
+        # initially set to be same as parent (full window)
+        self.playing_area = self.screen.subsurface(0,0,1000,700)
 
         self.head_image = pygame.image.load("./images/Bobble_Dale.png")
         self.segment_image = pygame.image.load("./images/crushed_can2.png")
         self.food_image = pygame.image.load("./images/Alamo_can.png")
+        self.background_image = pygame.image.load("./images/Backyard_BackgroundTest.png")
 
         self.level = 0
+        self.lives = 3
+        self.modes = {'snake':1, 'boss':2}
+        self.current_mode = self.modes['snake']
+        self.player_success = True
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font('freesansbold.ttf', 20)
         self.world = Rect((0, 0), WORLD_SIZE)
         self.reset(True)
+
+    def boss_battle(self, level):
+        #  For now let's just change the screen background, wait
+        #  and then return success to keep the game moving
+        # self.background_color = (2, 148, 83)  # green grass
+        # self.screen.fill(self.background_color)
+        #pygame.display.flip()
+        #pygame.time.wait(5000)    # wait 5 seconds
+        print "boss_battle WON!"
+        return (True)
 
     def reset(self,full_reset=True):
         """Start a new game."""
@@ -153,8 +173,8 @@ class SnakeGame(object):
         self.next_direction = DIRECTION_UP
         self.snake = Snake(self.world.center, SNAKE_START_LENGTH)
         self.food = set()
-        self.spread_food(1)
-
+        self.spread_food((self.level * 3) + 1)
+        self.player_success = True
         if full_reset:
             self.score = 0
 
@@ -166,7 +186,7 @@ class SnakeGame(object):
         self.next_direction = DIRECTION_UP
         self.snake = Snake(self.world.center, SNAKE_START_LENGTH)
         self.food = set()
-        self.spread_food(5)
+        self.spread_food((self.level * 3) + 1)
 
     def add_food(self):
         """Ensure that there is at least one piece of food.
@@ -199,15 +219,6 @@ class SnakeGame(object):
         """Update the game by dt seconds."""
         self.snake.update(dt, self.next_direction)
 
-        # # If snake hits a food block, then consume the food, add new
-        # # food and grow the snake.
-        # head = self.snake.head()
-        # if head in self.food:
-        #     self.food.remove(head)
-        #     self.add_food()
-        #     self.snake.grow()
-        #     self.score += len(self.snake) * SEGMENT_SCORE
-
         # If our snake hits a food block, just consume it and grow...could be a good place to introduce random "bonus" object
 
         head = self.snake.head()
@@ -217,9 +228,9 @@ class SnakeGame(object):
             self.score += len(self.snake) * SEGMENT_SCORE
 
         # If snake collides with self or the screen boundaries, then
-        # it's game over.
+        # it's game over...lose a life.
         if self.snake.self_intersecting() or not self.world.collidepoint(self.snake.head()):
-            self.playing = False
+            self.player_success = False
 
     def block(self, p):
         """Return the screen rectangle corresponding to the position p."""
@@ -232,20 +243,25 @@ class SnakeGame(object):
     def draw(self):
         # SLA - modified to use loaded images instead of simple blocks
         """Draw game (while playing)."""
-        self.screen.fill(BACKGROUND_COLOR)
+        self.screen.blit(self.background_image, [0, 0])
 
         for i, p in enumerate(self.snake):
             if i == 0:  # it's the head, use our image
-                self.screen.blit(self.head_image, self.block(p))
+            #    self.screen.blit(self.head_image, self.block(p))
+                self.playing_area.blit(self.head_image, self.block(p))
             else:  # it's a segment, use our image
-                self.screen.blit(self.segment_image, self.block(p))
+            # self.screen.blit(self.segment_image, self.block(p))
+                self.playing_area.blit(self.segment_image, self.block(p))
+
                 #pygame.draw.rect(self.screen, SNAKE_COLOR, self.block(p))
 
         # Note:  at this point i and p are at the tail...
 
         for f in self.food:
         #    pygame.draw.rect(self.screen, FOOD_COLOR, self.block(f))
-            self.screen.blit(self.food_image, self.block(f))
+            # self.screen.blit(self.food_image, self.block(f))
+            self.playing_area.blit(self.food_image, self.block(f))
+
 
         self.draw_text("Score: {}".format(self.score), (20, 20))
 
@@ -256,16 +272,17 @@ class SnakeGame(object):
         self.draw_text("Your score is: {}".format(self.score), (140, 180))
 
     def play(self, level):
-        pygame.display.flip()  # to account for re-entry after continue?
-        player_success = False
-        print "playing level %r" % level
+        print "passed level %r" % level
+        print "playing level %r" % self.level
+        print "lives %r" % self.lives
 
-        while bool(self.food):
+        while bool(self.food) and self.player_success:
             dt = self.clock.tick(FPS) / 1000.0  # convert to seconds
             for e in pygame.event.get():
                 if e.type == QUIT:
                     self.playing = False
-                    return player_success
+                    self.player_success = False
+                    return self.player_success
                 elif e.type == KEYDOWN:
                     self.input(e)
 
@@ -273,39 +290,54 @@ class SnakeGame(object):
                 self.update(dt)
                 self.draw()
             else:
+                self.player_success = False
                 self.draw_death()
 
             pygame.display.flip()
 
         if (bool(self.food) == False):  #  No more food!
             print "You cleared the screen"
-            player_success = True
-            self.level += 1
+            self.player_success = True
+            self.current_game = self.modes['boss']
+        elif self.player_success == False:
+            self.lives -= 1
 
-        print "player_success %r" % player_success
-        return player_success
+        print "player_success BEFORE FINAL RETURN %r" % self.player_success
+        return self.player_success
 
 
 pygame.init()
 
 levels = [0, 1, 2, 3, 4]
 player_success = True
+beat_boss = False
 i=0
 current_game = SnakeGame()
+print "current_game.lives %r" % current_game.lives
 
-while (i < len(levels)):
-    player_success = current_game.play(levels[i])
-    if player_success:
-        # transition sequence
+while ((current_game.lives > 0) and current_game.playing):
+    current_game.player_success = current_game.play(levels[current_game.level])
+    print "AFTER play() lives %r" % current_game.lives
+    print "current_game.playing %r" % current_game.playing
+    if current_game.player_success:
+        # transition sequence to boss battle
         # boss battle (shooter game)
-        # if player_beat_boss then level up...
-        i += 1
-        current_game.level_up()
-        # otherwise, make player repeat level
-    elif current_game.playing == False:
-        break
+        beat_boss = current_game.boss_battle(current_game.level)
+        if beat_boss:
+            current_game.level_up()
+            beat_boss = False
+        # otherwise, level doesn't change, player repeats level
+        else:
+            current_game.reset(False)  # partial reset
+    elif current_game.playing:
+        current_game.reset(False)  # partial reset
+        # transistion sequence back to main game
+    # elif current_game.playing == False:
+    #     break
 
-if player_success and current_game.playing == True:
+if current_game.player_success and (current_game.level == (len(levels) - 1)):
     print "CONGRATS! You beat all %d levels!" % len(levels)
+elif current_game.lives < 1:
+    print "SORRY...you lost all your lives!"
 
 pygame.quit()
