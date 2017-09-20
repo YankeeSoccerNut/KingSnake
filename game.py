@@ -1,6 +1,5 @@
 # TODO: Need to implement boss battle prior to level_up....pull in shooter project
 # TODO: Need to change character images on level_up
-# TODO: Need to set World and boundaries to specific point in the background
 # TODO: Clean up and restructure so this is not all 1 big file
 # TODO: Consider using classes....
 
@@ -132,14 +131,13 @@ class Snake(object):
 
 class SnakeGame(object):
     def __init__(self):
-        print "initing SnakeGame"
         pygame.display.set_caption('King of the Hill -- The Slithering')
         self.block_size = BLOCK_SIZE
         self.window = pygame.display.set_mode([WINDOW_WIDTH, WINDOW_HEIGHT])
 
         self.screen = pygame.display.get_surface()
         # Set up a playing_area surface that is equal to WORLD_SIZE
-        print "WORLD SIZE WIDTH * BLOCK SIZE = %r" % ((WORLD_SIZE[0] * BLOCK_SIZE))
+        # print "WORLD SIZE WIDTH * BLOCK SIZE = %r" % ((WORLD_SIZE[0] * BLOCK_SIZE))
         self.playing_area = self.screen.subsurface(250, 0, 750, WINDOW_HEIGHT)
         self.status_area = self.screen.subsurface(60, 235, 200, 405)
 
@@ -157,6 +155,9 @@ class SnakeGame(object):
         self.font = pygame.font.Font('freesansbold.ttf', 20)
         self.world = Rect((0, 0), WORLD_SIZE)
         self.reset(True)
+        # start the music...
+        pygame.mixer.music.load("./sounds/kingohill.mp3")
+        pygame.mixer.music.play(-1)
 
     def boss_battle(self, level):
         #  For now let's just change the screen background, wait
@@ -201,7 +202,6 @@ class SnakeGame(object):
 
     def spread_food(self, numfood):
         # Our version of the game distributes a set number of food items for our characters to clear before they can level up
-        print "spreading %d beer cans" % numfood
         for i in range (0, numfood):
             food = Vector(map(randrange, self.world.bottomright))
             if food not in self.food and food not in self.snake:
@@ -284,14 +284,8 @@ class SnakeGame(object):
         self.status_area.blit(self.font.render(power_bonus_text, 1, TEXT_COLOR), (10,85))
 
     def play(self, level):
-        print "passed level %r" % level
-        print "playing level %r" % self.level
-        print "lives %r" % self.lives
-
         while bool(self.food) and self.player_success:
             dt = self.clock.tick(FPS) / 1000.0  # convert to seconds
-            if int(dt) % 5 == 0:
-                print "Test immediiate after tick..5 seconds passed...status area change?"
 
             for e in pygame.event.get():
                 if e.type == QUIT:
@@ -319,7 +313,6 @@ class SnakeGame(object):
         elif self.player_success == False:
             self.lives -= 1
 
-        print "player_success BEFORE FINAL RETURN %r" % self.player_success
         return self.player_success
 
     def closing_screen(self, player_success):
@@ -327,6 +320,7 @@ class SnakeGame(object):
 
         self.screen.fill((255,255,255))
 
+# TODO: could put in last level completed character here, don't need the test unless want variation based on outcome
         if player_success:
             background_image = pygame.image.load("./images/Bobble_Dale.png")
         else:
@@ -361,8 +355,7 @@ keep_playing = True
 while keep_playing:
     while ((current_game.lives > 0) and current_game.playing):
         current_game.player_success = current_game.play(levels[current_game.level])
-        print "AFTER play() lives %r" % current_game.lives
-        print "current_game.playing %r" % current_game.playing
+
         if current_game.player_success:
             # transition sequence to boss battle
             # boss battle (shooter game)
