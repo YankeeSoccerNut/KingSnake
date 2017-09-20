@@ -48,6 +48,8 @@ SNAKE_SPEED_INITIAL = 10.0       # Initial snake speed (squares per second)
 SNAKE_SPEED_INCREMENT = 2.0    # Snake speeds up this much each time it grows
 SNAKE_START_LENGTH = 1          # Initial snake length in segments
 
+WINDOW_WIDTH  = 1000
+WINDOW_HEIGHT = 700
 WORLD_SIZE = Vector((35, 35))   # World size, in blocks
 BLOCK_SIZE = 20                 # Block size, in pixels
 
@@ -131,16 +133,15 @@ class Snake(object):
 class SnakeGame(object):
     def __init__(self):
         print "initing SnakeGame"
-        pygame.display.set_caption('PyGame Snake')
+        pygame.display.set_caption('King of the Hill -- The Slithering')
         self.block_size = BLOCK_SIZE
-        self.window = pygame.display.set_mode([1000, 700])
-        #self.window = pygame.display.set_mode([1200, 800])
-
-#        self.window = pygame.display.set_mode(WORLD_SIZE * self.block_size)
+        self.window = pygame.display.set_mode([WINDOW_WIDTH, WINDOW_HEIGHT])
 
         self.screen = pygame.display.get_surface()
-        # initially set to be same as parent (full window)
-        self.playing_area = self.screen.subsurface(0,0,1000,700)
+        # Set up a playing_area surface that is equal to WORLD_SIZE
+        print "WORLD SIZE WIDTH * BLOCK SIZE = %r" % ((WORLD_SIZE[0] * BLOCK_SIZE))
+        self.playing_area = self.screen.subsurface(250, 0, 750, WINDOW_HEIGHT)
+        self.status_area = self.screen.subsurface(60, 235, 200, 405)
 
         self.head_image = pygame.image.load("./images/Bobble_Dale.png")
         self.segment_image = pygame.image.load("./images/crushed_can2.png")
@@ -175,10 +176,11 @@ class SnakeGame(object):
         self.food = set()
         self.spread_food((self.level * 3) + 1)
         self.player_success = True
+
         if full_reset:
             self.score = 0
-
-        #self.add_food()
+            self.lives = 3
+            self.level = 0
 
     def level_up(self):
         """Start a new level."""
@@ -241,7 +243,6 @@ class SnakeGame(object):
         self.screen.blit(self.font.render(text, 1, TEXT_COLOR), p)
 
     def draw(self):
-        # SLA - modified to use loaded images instead of simple blocks
         """Draw game (while playing)."""
         self.screen.blit(self.background_image, [0, 0])
 
@@ -249,11 +250,10 @@ class SnakeGame(object):
             if i == 0:  # it's the head, use our image
             #    self.screen.blit(self.head_image, self.block(p))
                 self.playing_area.blit(self.head_image, self.block(p))
+                print self.block(p)
             else:  # it's a segment, use our image
             # self.screen.blit(self.segment_image, self.block(p))
                 self.playing_area.blit(self.segment_image, self.block(p))
-
-                #pygame.draw.rect(self.screen, SNAKE_COLOR, self.block(p))
 
         # Note:  at this point i and p are at the tail...
 
@@ -262,14 +262,26 @@ class SnakeGame(object):
             # self.screen.blit(self.food_image, self.block(f))
             self.playing_area.blit(self.food_image, self.block(f))
 
-
-        self.draw_text("Score: {}".format(self.score), (20, 20))
+        # self.draw_text("Score: {}    Lives: {}".format(self.score, self.lives), (20, 20))
+        #
+        # self.draw_text("LEVEL: {}".format(self.level), (20, 50))
 
     def draw_death(self):
         """Draw game (after game over)."""
         self.screen.fill(DEATH_COLOR)
         self.draw_text("Game over! Press Space to start a new game or letter 'C' to continue", (20, 150))
         self.draw_text("Your score is: {}".format(self.score), (140, 180))
+
+    def update_status_area(self):
+        level_text = "Level: {}".format(self.level)
+        score_text = "Score: {}".format(self.score)
+        lives_text = "Lives: {}".format(self.lives)
+        power_bonus_text = "Power Ups: "
+
+        self.status_area.blit(self.font.render(level_text, 1, TEXT_COLOR), (10,10))
+        self.status_area.blit(self.font.render(score_text, 1, TEXT_COLOR), (10,35))
+        self.status_area.blit(self.font.render(lives_text, 1, TEXT_COLOR), (10,60))
+        self.status_area.blit(self.font.render(power_bonus_text, 1, TEXT_COLOR), (10,85))
 
     def play(self, level):
         print "passed level %r" % level
@@ -278,6 +290,9 @@ class SnakeGame(object):
 
         while bool(self.food) and self.player_success:
             dt = self.clock.tick(FPS) / 1000.0  # convert to seconds
+            if int(dt) % 5 == 0:
+                print "Test immediiate after tick..5 seconds passed...status area change?"
+
             for e in pygame.event.get():
                 if e.type == QUIT:
                     self.playing = False
@@ -293,6 +308,8 @@ class SnakeGame(object):
                 self.player_success = False
                 self.draw_death()
 
+            self.update_status_area()
+
             pygame.display.flip()
 
         if (bool(self.food) == False):  #  No more food!
@@ -305,6 +322,31 @@ class SnakeGame(object):
         print "player_success BEFORE FINAL RETURN %r" % self.player_success
         return self.player_success
 
+    def closing_screen(self, player_success):
+        waiting = True
+
+        self.screen.fill((255,255,255))
+
+        if player_success:
+            background_image = pygame.image.load("./images/Bobble_Dale.png")
+        else:
+            background_image = pygame.image.load("./images/Bobble_Dale.png")
+
+        self.screen.blit(background_image, [100, 100])
+
+        self.screen.blit(self.font.render("Press any key to play again or click on Close Window to Quit", 1, (255,0,0)), (200,200))
+
+        pygame.display.flip()
+
+        while waiting == True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    waiting = False
+                    return(False)
+                elif event.type == pygame.KEYDOWN:
+                    waiting = False
+                    return(True)
+
 
 pygame.init()
 
@@ -313,31 +355,37 @@ player_success = True
 beat_boss = False
 i=0
 current_game = SnakeGame()
-print "current_game.lives %r" % current_game.lives
 
-while ((current_game.lives > 0) and current_game.playing):
-    current_game.player_success = current_game.play(levels[current_game.level])
-    print "AFTER play() lives %r" % current_game.lives
-    print "current_game.playing %r" % current_game.playing
-    if current_game.player_success:
-        # transition sequence to boss battle
-        # boss battle (shooter game)
-        beat_boss = current_game.boss_battle(current_game.level)
-        if beat_boss:
-            current_game.level_up()
-            beat_boss = False
-        # otherwise, level doesn't change, player repeats level
-        else:
+keep_playing = True
+
+while keep_playing:
+    while ((current_game.lives > 0) and current_game.playing):
+        current_game.player_success = current_game.play(levels[current_game.level])
+        print "AFTER play() lives %r" % current_game.lives
+        print "current_game.playing %r" % current_game.playing
+        if current_game.player_success:
+            # transition sequence to boss battle
+            # boss battle (shooter game)
+            beat_boss = current_game.boss_battle(current_game.level)
+            if beat_boss:
+                current_game.level_up()
+                beat_boss = False
+            # otherwise, level doesn't change, player repeats level
+            else:
+                current_game.reset(False)  # partial reset
+        elif current_game.playing:
             current_game.reset(False)  # partial reset
-    elif current_game.playing:
-        current_game.reset(False)  # partial reset
-        # transistion sequence back to main game
-    # elif current_game.playing == False:
-    #     break
+            # transistion sequence back to main game
+        # elif current_game.playing == False:
+        #     break
 
-if current_game.player_success and (current_game.level == (len(levels) - 1)):
-    print "CONGRATS! You beat all %d levels!" % len(levels)
-elif current_game.lives < 1:
-    print "SORRY...you lost all your lives!"
+    if current_game.player_success and (current_game.level == (len(levels) - 1)):
+        print "Congratulations!! You beat all %d levels" % (len(levels) + 1)
+    elif current_game.lives < 1:
+        print "SORRY...you lost all your lives!"
+
+    keep_playing = current_game.closing_screen(current_game.player_success)
+    if keep_playing:
+        current_game.reset(True)
 
 pygame.quit()
